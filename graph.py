@@ -10,7 +10,7 @@ import sys
 class Scanner:
 
     def __init__(self):
-        self._imports = collections.defaultdict(list)
+        self._imports = collections.defaultdict(set)
         self._errors = {}
         self._seen = set()
 
@@ -48,8 +48,8 @@ class Scanner:
             return
 
         for import_node in self._get_imports(mod.__file__):
-            self._imports[mod.__name__].append(import_node)
             submod_name = self._get_module_name_from_import(import_node)
+            self._imports[mod.__name__].add(submod_name)
             if submod_name == 'doctest':
                 # heapq imports doctest in __main__, but we can ignore
                 # that.
@@ -77,8 +77,7 @@ class Scanner:
         shown.add(name)
 
         # Show the dependencies.
-        for imported in self._imports[name]:
-            imported_name = self._get_module_name_from_import(imported)
+        for imported_name in self._imports[name]:
             self.show_module(imported_name, depth+1, shown)
 
     def get_edges(self, name, shown=None):
@@ -91,13 +90,11 @@ class Scanner:
         shown.add(name)
 
         # Edges directly from this node
-        for imported in self._imports[name]:
-            target_module = self._get_module_name_from_import(imported)
+        for target_module in self._imports[name]:
             yield (name, target_module)
 
         # Recurse
-        for imported in self._imports[name]:
-            target_module = self._get_module_name_from_import(imported)
+        for target_module in self._imports[name]:
             yield from self.get_edges(target_module, shown)
 
 
